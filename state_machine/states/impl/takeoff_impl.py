@@ -11,7 +11,7 @@ from state_machine.state_tracker import (
 )
 from state_machine.states.state import State
 from state_machine.states.takeoff import Takeoff
-from state_machine.states.waypoint import Waypoint
+from state_machine.states.land import Land
 
 
 async def run(self: Takeoff) -> State:
@@ -48,7 +48,7 @@ async def run(self: Takeoff) -> State:
         )
         await self.drone.takeoff(takeoff_altitude)
 
-        return Waypoint(self.drone, self.flight_settings)
+        return Land(self.drone, self.flight_settings)
     except asyncio.CancelledError as ex:
         logging.error("Takeoff state canceled")
         raise ex

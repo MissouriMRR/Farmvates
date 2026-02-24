@@ -1,10 +1,8 @@
 """Defines the state classes."""
 
+# CUSTOMIZE THIS: add your own states here
 from state_machine.states.impl import (
-    Airdrop,
     Land,
-    Mapping,
-    ODLC,
     Start,
     Takeoff,
     Waypoint,

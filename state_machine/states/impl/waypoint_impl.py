@@ -74,6 +74,7 @@ async def run(self: Waypoint) -> State:
         pass
 
 
+# TODO: make this more general (e.g., accepting a list of waypoints as a parameter)
 async def waypoint_logic(self: Waypoint) -> None:
     """
     Run the logic for the waypoint state.

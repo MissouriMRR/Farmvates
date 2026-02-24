@@ -9,8 +9,8 @@ from typing import Final
 from state_machine import mission_config
 from state_machine.mission_config import MissionConfig, SimModeConfig
 
-DEFAULT_RUN_TITLE: Final[str] = "SUAS Test Flight"
-DEFAULT_RUN_DESCRIPTION: Final[str] = "Test flight for SUAS 2025"
+DEFAULT_RUN_TITLE: Final[str] = "Test Flight"
+DEFAULT_RUN_DESCRIPTION: Final[str] = "A test flight"
 DEFAULT_STANDARD_OBJECT_COUNT: Final[int] = 5
 
 
