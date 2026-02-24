@@ -1,7 +1,7 @@
 [project]
-name = "suas-2026"
+name = "drone-mission-template"
 version = "1.0.0"
-description = "Student Unmanned Aerial Systems 2026 Competition code"
+description = "A template for drone missions using a state machine architecture."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
