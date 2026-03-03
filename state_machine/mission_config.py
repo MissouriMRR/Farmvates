@@ -12,12 +12,10 @@ class SimModeConfig(TypedDict):
     ----------
     mission_data_path : str
         The path to the JSON file containing the boundary and waypoint data.
-    standard_object_count : int
-        The number of standard objects to attempt to find.
     """
 
     mission_data_path: str
-    standard_object_count: int
+    # CUSTOMIZE THIS: add attributes here
 
 
 class WindConfig(TypedDict):
@@ -53,12 +51,6 @@ class MissionConfig(TypedDict):
         Settings to use when running in real mode.
     airsim_mode_config : SimModeConfig
         Settings to use when running in real mode.
-    skip_waypoint : bool
-        Whether to skip the waypoint state.
-    skip_odlc_and_airdrop : bool
-        Whether to skip the ODLC and airdrop states.
-    simple_takeoff : bool
-        Sets if flight will use a simple vertical takeoff.
     wind : WindConfig
         Manually entered information on the wind.
     """
@@ -68,10 +60,8 @@ class MissionConfig(TypedDict):
     real_mode_config: SimModeConfig
     sim_mode_config: SimModeConfig
     airsim_mode_config: SimModeConfig
-    skip_waypoint: bool
-    skip_odlc_and_airdrop: bool
-    simple_takeoff: bool
     wind: WindConfig
+    # CUSTOMIZE THIS: add attributes here
 
 
 def get_mission_config() -> MissionConfig:

@@ -2,20 +2,14 @@
     "run_title": "Test Flight",
     "run_description": "A test flight",
     "real_mode_config": {
-        "mission_data_path": "flight/data/golf_data.json",
-        "standard_object_count": 4
+        "mission_data_path": "flight/data/golf_data.json"
     },
     "sim_mode_config": {
-        "mission_data_path": "flight/data/golf_data.json",
-        "standard_object_count": 4
+        "mission_data_path": "flight/data/golf_data.json"
     },
     "airsim_mode_config": {
-        "mission_data_path": "flight/data/golf_data.json",
-        "standard_object_count": 4
+        "mission_data_path": "flight/data/golf_data.json"
     },
-    "skip_waypoint": false,
-    "skip_odlc_and_airdrop": false,
-    "simple_takeoff": false,
     "wind": {
         "mean_wind_speed": 0.0,
         "mean_wind_direction": 0.0
