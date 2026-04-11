@@ -82,10 +82,27 @@ class Drone:
         self.address: str = address
         self.baud: int | None = baud
         self.odlc_scan: bool = True
+        self.groundStationLocation: dronekit.LocationGlobalRelative | None = None     
 
-        with open("flight/data/attempted_drops.json", "w", encoding="utf8") as file:
-            json.dump({}, file)
+    async def setGroundStationLocation(self) -> bool:
+        """
+        Set the ground station location attribute to the current location of the drone.
 
+        Returns
+        -------
+        bool
+            Whether the ground station location was successfully set.
+        """
+        if not self.is_connected:
+            logging.warning("Tried to set ground station location before connecting to drone.")
+            return False
+
+        self.groundStationLocation = self.vehicle.location.global_relative_frame
+        logging.info(
+            f"Ground station location set to lat: {self.groundStationLocation.lat}, "
+            f"lon: {self.groundStationLocation.lon}, alt: {self.groundStationLocation.alt}"
+        )
+        return True
     async def _send_servo_msg(self, servo_num: int, pwm: int) -> None:
         """Send a DO_SET_SERVO MAVLink message to the drone.
 

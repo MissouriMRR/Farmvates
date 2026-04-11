@@ -58,22 +58,6 @@ class WaypointUtm(NamedTuple):
     altitude: float
 
 
-class OdlcWaypoint(NamedTuple):
-    """
-    NamedTuple storing the data for a single ODLC waypoint.
-
-    Attributes
-    ----------
-    latitude : float
-        The latitude of the waypoint.
-    longitude : float
-        The longitude of the waypoint.
-    """
-
-    latitude: float
-    longitude: float
-
-
 class BoundaryPoint(NamedTuple):
     """
     NamedTuple storing the data for a single boundary point.
@@ -118,11 +102,10 @@ GPSData = TypedDict(
     {
         "waypoints": list[Waypoint],
         "waypoints_utm": list[WaypointUtm],
-        "odlc_waypoints": list[OdlcWaypoint],
+        
         "boundary_points": list[BoundaryPoint],
         "boundary_points_utm": list[BoundaryPointUtm],
-        "odlc_boundary": list[BoundaryPoint],
-        "odlc_boundary_utm": list[BoundaryPointUtm],
+
         "mapping_boundary": list[BoundaryPoint],
         "mapping_boundary_utm": list[BoundaryPointUtm],
         "altitude_limits": list[float],
@@ -305,7 +288,7 @@ def extract_gps(path: str) -> GPSData:
     # Initialize lists to store waypoints & boundary points
     waypoints: list[Waypoint] = []
     waypoints_utm: list[WaypointUtm] = []
-    odlc_waypoints: list[OdlcWaypoint] = []
+    
     boundary_points: list[BoundaryPoint] = []
     boundary_points_utm: list[BoundaryPointUtm] = []
     odlc_boundary: list[BoundaryPoint] = []

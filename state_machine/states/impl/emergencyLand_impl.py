@@ -8,10 +8,10 @@ from state_machine.state_tracker import (
     update_drone,
     
 )
-from state_machine.states.land import Land
+from state_machine.states.emergencyLand import EmergencyLand
 
 
-async def run(self: Land) -> None:
+async def run(self: EmergencyLand) -> None:
     """
     Implements the run method for the Land state.
 
@@ -37,7 +37,7 @@ async def run(self: Land) -> None:
         # Instruct the drone to land
         self.drone.vehicle.airspeed = 20
         await self.drone.return_to_launch()
-        print("RUN ALEN's CODE HERE")
+
         logging.info("Land state complete.")
         return
     except asyncio.CancelledError as ex:
@@ -45,5 +45,5 @@ async def run(self: Land) -> None:
         raise ex
 
 
-# Setting the run_callable attribute of the Land class to the run function
-Land.run_callable = run
+# Setting the run_callable attribute of the EmergencyLand class to the run function
+EmergencyLand.run_callable = run

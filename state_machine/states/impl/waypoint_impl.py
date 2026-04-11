@@ -22,14 +22,16 @@ from flight.waypoint.goto import move_to
 from flight.waypoint.graph import GraphNode
 from flight.waypoint import pathfinding
 
-from state_machine.states.airdrop import Airdrop
-from state_machine.states.odlc import ODLC
+
 from state_machine.states.state import State
+from state_machine.states.start import Start
 from state_machine.states.waypoint import Waypoint
+from state_machine.states.land import Land
+from state_machine.states.emergencyLand import EmergencyLand
 from state_machine.state_tracker import (
     update_state,
     update_drone,
-    update_flight_settings,
+    
 )
 
 BOUNDARY_SHRINKAGE: Final[float] = 5.0  # in meters
@@ -60,121 +62,46 @@ async def run(self: Waypoint) -> State:
     """
 
     try:
-        if not self.flight_settings.skip_waypoint:
-            await waypoint_logic(self)
-            logging.info("Waypoint state completed")
+        update_state("Waypoint")
+        update_drone(self.drone)
 
-        return (ODLC if self.drone.odlc_scan else Airdrop)(self.drone, self.flight_settings)
+        logging.info("Waypoint state running")  
+        total = len(self.drone._vehicle.commands)
+        
+        dots=""
+        while self.drone._vehicle.commands.next < total or self.flight_settings.loop_until_low_battery:
+            print(self.drone._vehicle.commands.next)
+            await asyncio.sleep(5)
+            logging.info("Waypoint state still running"+dots)  
+            if(self.drone._vehicle.battery.level < self.flight_settings.emergency_land_pct and not self.flight_settings.loop_until_low_battery):
+                logging.info("Emergency battery threshold reached, landing immediately")
+                return EmergencyLand(self.drone, self.flight_settings)
+            elif(self.drone._vehicle.battery.level < self.flight_settings.begin_landing_pct and self.flight_settings.loop_until_low_battery):
+                logging.info("Low battery threshold reached, ending mission")
+                return Land(self.drone, self.flight_settings)
+            if(self.drone._vehicle.mode.name != "AUTO"):
+
+                logging.info("Drone mode changed from AUTO, landing immediately")
+                return Start(self.drone, self.flight_settings)
+            dots+="."
+            if(len(dots)>3):
+                dots=""
+
+        logging.info("Loops complete, landing")
+        return Land(self.drone, self.flight_settings)
+            
+        # mission done
+        
 
     except asyncio.CancelledError as ex:
         logging.error("Waypoint state canceled")
+        raise ex
+    except Exception as ex:
+        logging.error(f"Error in Waypoint state: {ex}")
         traceback.print_exc()
         raise ex
     finally:
         pass
-
-
-# TODO: make this more general (e.g., accepting a list of waypoints as a parameter)
-async def waypoint_logic(self: Waypoint) -> None:
-    """
-    Run the logic for the waypoint state.
-
-    Parameters
-    ----------
-    self : Waypoint
-        The waypoint state object.
-    """
-    update_state("Waypoint")
-    update_drone(self.drone)
-    update_flight_settings(self.flight_settings)
-    logging.info("Waypoint state running")
-
-    gps_dict: GPSData = extract_gps(self.flight_settings.mission_data_path)
-    waypoints_utm: list[WaylistUtm] = gps_dict["waypoints_utm"]
-
-    boundary_points: list[BoundarylistUtm] = gps_dict["boundary_points_utm"]
-    boundary_points.pop()  # The last point is a duplicate of the first
-
-    boundary_vertices: list[Point] = []
-    for point in boundary_points:
-        boundary_vertices.append(Point(point.easting, point.northing))
-
-    search_graph: list[GraphNode[Point, float]] = pathfinding.create_pathfinding_graph(
-        boundary_vertices, BOUNDARY_SHRINKAGE
-    )
-
-    for waypoint_num, waypoint in enumerate(waypoints_utm):
-        drone_position: dronekit.LocationGlobalRelative = (
-            self.drone.vehicle.location.global_relative_frame
-        )
-        drone_northing, drone_easting, _, _ = utm.from_latlon(
-            drone_position.lat,
-            drone_position.lon,
-            boundary_points[0].zone_number,
-            boundary_points[0].zone_letter,
-        )
-
-        goto_points: list[Point]
-        try:
-            goto_points = list(
-                pathfinding.shortest_path_between(
-                    Point(drone_easting, drone_northing),
-                    Point(waypoint.easting, waypoint.northing),
-                    search_graph,
-                )
-            )
-        except RuntimeError:
-            # Unable to find path that doesn't intersect boundary
-            # This should never happen
-            goto_points = [Point(waypoint.easting, waypoint.northing)]
-
-        path_length: float = (
-            sum(
-                line_segment.length()
-                for line_segment in LineSegment.from_points(goto_points, False)
-            )
-            + (goto_points[0] - Point(drone_easting, drone_northing)).distance_from_origin()
-        )
-
-        curr_altitude: float = drone_position.alt
-        # altitude_slope: float = (waypoint.altitude - curr_altitude) / path_length
-
-        goto_points.pop()  # The last point is just the waypoint
-
-        lat_deg: float
-        lon_deg: float
-        lat_deg, lon_deg = utm.to_latlon(
-            waypoint.easting,
-            waypoint.northing,
-            waypoint.zone_number,
-            waypoint.zone_letter,
-        )
-
-        logging.info("Moving to waypoint %d (lat=%f, lon=%f)", waypoint_num, lat_deg, lon_deg)
-
-        for line_segment in LineSegment.from_points(goto_points, False):
-            lat_deg, lon_deg = utm.to_latlon(
-                line_segment.p_2.x,
-                line_segment.p_2.y,
-                boundary_points[0].zone_number,
-                boundary_points[0].zone_letter,
-            )
-
-            # Gradually move toward goal altitude
-            curr_altitude += (
-                (waypoint.altitude - curr_altitude) / path_length
-            ) * line_segment.length()
-
-            await move_to(
-                self.drone.vehicle, lat_deg, lon_deg, curr_altitude, airspeed=WAYPOINT_AIR_SPEED
-            )
-
-        await move_to(
-            self.drone.vehicle, lat_deg, lon_deg, waypoint.altitude, airspeed=WAYPOINT_AIR_SPEED
-        )
-
-        logging.info("Reached waypoint %d", waypoint_num)
-
 
 # Set the run_callable attribute of the Waypoint class to the run function
 Waypoint.run_callable = run

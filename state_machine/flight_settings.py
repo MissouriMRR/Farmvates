@@ -9,6 +9,7 @@ from typing import Final
 from state_machine import mission_config
 from state_machine.mission_config import MissionConfig, SimModeConfig
 
+from dronekit import LocationGlobalRelative, LocationGlobal
 DEFAULT_RUN_TITLE: Final[str] = "Test Flight"
 DEFAULT_RUN_DESCRIPTION: Final[str] = "A test flight"
 DEFAULT_STANDARD_OBJECT_COUNT: Final[int] = 5
@@ -100,58 +101,57 @@ class FlightSettings:
 
     _read_sim_mode: bool = False
 
+
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        simple_takeoff: bool = False,
-        title: str = DEFAULT_RUN_TITLE,
-        description: str = DEFAULT_RUN_DESCRIPTION,
-        mean_wind_speed: float = 0.0,
-        mean_wind_direction: float = 0.0,
-        skip_waypoint: bool = False,
-        skip_odlc_and_airdrop: bool = False,
-        standard_object_count: int = DEFAULT_STANDARD_OBJECT_COUNT,
+        exported_at: str,
+        waypoints: list,
+        loops: int,
+        ground_station_lat: float,
+        ground_station_lon: float,
+        ground_station_address: str,
+        cruise_speed_ms: float,
+        min_altitude_m: float,
+        begin_landing_pct: float,
+        emergency_land_pct: float,
+        log_battery_events: bool,
+        log_flight_hours: bool,
+        low_battery_alert: bool,
+        geofence_enabled: bool,
+        geofence_points: list,
+        loop_until_low_battery: bool,
         sim_mode: SimMode = SimMode.REAL,
-        mission_data_path: str = "flight/data/waypoint_data.json",
     ) -> None:
-        """
-        Default Constructor for flight settings
-
-        Parameters
-        ----------
-        simple_takeoff : bool, default False
-            Sets if flight will use a simple vertical takeoff.
-        title : str
-            The name for the flight execution.
-        description : str
-            Sets a descriptive explanation for the current flight execution.
-        mean_wind_speed : float, default 0.0
-            The mean wind speed, in meters per second.
-        mean_wind_direction : float, default 0.0
-            The mean wind direction, in degrees.
-            A value of 0 represents north, and 90 represents west.
-        skip_waypoint : bool
-            Whether to skip the waypoint state.
-        skip_odlc_and_airdrop : bool
-            Whether to skip the ODLC and airdrop states.
-        standard_object_count : int
-            The number of standard objects to attempt to find.
-        sim_mode : SimMode, default SimMode.REAL
-            Whether the drone is real, running in the ardupilot sim, or running in airsim.
-        mission_data_path : str, default "flight/data/waypoint_data.json"
-            The path to the JSON file containing the boundary and waypoint data.
-        """
-        self.__simple_takeoff: bool = simple_takeoff
-        self.__run_title: str = title
-        self.__run_description: str = description
-        self.__mean_wind_speed: float = mean_wind_speed
-        self.__mean_wind_direction: float = mean_wind_direction
-        self.__skip_waypoint: bool = skip_waypoint
-        self.__skip_odlc_and_airdrop: bool = skip_odlc_and_airdrop
-        self.__standard_object_count: int = standard_object_count
+        self.__exported_at: str = exported_at
+        self.__loops: int = loops
+        self.__ground_station_lat: float = ground_station_lat
+        self.__ground_station_lon: float = ground_station_lon
+        self.__ground_station_address: str = ground_station_address
+        self.__cruise_speed_ms: float = cruise_speed_ms
+        self.__min_altitude_m: float = min_altitude_m
+        self.__begin_landing_pct: float = begin_landing_pct
+        self.__emergency_land_pct: float = emergency_land_pct
+        self.__log_battery_events: bool = log_battery_events
+        self.__log_flight_hours: bool = log_flight_hours
+        self.__low_battery_alert: bool = low_battery_alert
+        self.__geofence_enabled: bool = geofence_enabled
+        self.__loop_until_low_battery: bool = loop_until_low_battery
         self.__sim_mode: SimMode = sim_mode
-        self.__mission_data_path: str = mission_data_path
         self.__yolo_status: Event = Event()
+        
+
+        # Parse waypoints → LocationGlobalRelative (altitude from min_altitude_m)
+        self.__waypoints: list[LocationGlobalRelative] = [
+            LocationGlobalRelative(wp["lat"], wp["lon"], min_altitude_m)
+            for wp in sorted(waypoints, key=lambda w: w["index"])
+        ]
+
+        # Parse geofence → LocationGlobal (no altitude for boundary points)
+        self.__geofence_points: list[LocationGlobal] = [
+            LocationGlobal(pt["lat"], pt["lon"], 0.0)
+            for pt in sorted(geofence_points, key=lambda p: p["index"])
+        ] if geofence_enabled else []
 
     @staticmethod
     def from_mission_config() -> "FlightSettings":
@@ -179,244 +179,108 @@ class FlightSettings:
             )
 
         config: MissionConfig = mission_config.get_mission_config()
-        sim_mode_config: SimModeConfig = (
-            config["airsim_mode_config"]
-            if airsim_flag
-            else (config["sim_mode_config"] if sim_flag else config["real_mode_config"])
-        )
+        
         config_settings: FlightSettings = FlightSettings(
-            config["simple_takeoff"],
-            config["run_title"],
-            config["run_description"],
-            config["wind"]["mean_wind_speed"],
-            config["wind"]["mean_wind_direction"],
-            config["skip_waypoint"],
-            config["skip_odlc_and_airdrop"],
-            sim_mode_config["standard_object_count"],
+            config["mission"]["exported_at"],
+
+            config["mission"]["flight_path"]["waypoints"],
+            config["mission"]["flight_path"]["loops"],
+
+            config["mission"]["ground_station"]["lat"],
+            config["mission"]["ground_station"]["lon"],
+            config["mission"]["ground_station"]["address"],
+
+            config["mission"]["advanced"]["cruise_speed_ms"],
+            config["mission"]["advanced"]["min_altitude_m"],
+            config["mission"]["advanced"]["begin_landing_pct"],
+            config["mission"]["advanced"]["emergency_land_pct"],
+            config["mission"]["advanced"]["log_battery_events"],
+            config["mission"]["advanced"]["log_flight_hours"],
+            config["mission"]["advanced"]["low_battery_alert"],
+
+            config["mission"]["geofence"]["enabled"],
+            config["mission"]["geofence"]["points"],
+            config["mission"]["advanced"]["loop_until_low_battery"],
+
             sim_mode,
-            sim_mode_config["mission_data_path"],
         )
         return config_settings
 
-    # ----- Takeoff Settings ----- #
     @property
-    def simple_takeoff(self) -> bool:
+    def loop_until_low_battery(self) -> bool:
         """
-        Gets simple_takeoff as a private member variable
+        Returns whether to loop through the waypoints until the battery is low.
 
         Returns
         -------
-        simple_takeoff : bool
-            Flag for vertical takeoff implementation or other
+        bool
+            Whether to loop through the waypoints until the battery is low.
         """
-        return self.__simple_takeoff
-
-    @simple_takeoff.setter
-    def simple_takeoff(self, simple_takeoff: bool) -> None:
-        """
-        Sets the flag for vertical takeoff
-
-        Parameters
-        ----------
-        simple_takeoff : bool
-            Flag for vertical takeoff
-        """
-        self.__simple_takeoff = simple_takeoff
-
-    # ----- Waypoint Settings ----- #
+        return self.__loop_until_low_battery
     @property
-    def skip_waypoint(self) -> bool:
-        """
-        Gets whether to skip the waypoint state as a private member variable.
-
-        Returns
-        -------
-        skip_waypoint : bool
-            Whether to skip the waypoint state.
-        """
-        return self.__skip_waypoint
-
-    @skip_waypoint.setter
-    def skip_waypoint(self, flag: bool) -> None:
-        """
-        Sets whether to skip the waypoint state.
-
-        Parameters
-        ----------
-        flag : bool
-            Whether to skip the waypoint state.
-        """
-        self.__skip_waypoint = flag
-
-    # ----- ODLC Settings ----- #
-    @property
-    def skip_odlc_and_airdrop(self) -> bool:
-        """
-        Gets whether to skip the ODLC and airdrop states as a private member variable.
-
-        Returns
-        -------
-        skip_odlc_and_airdrop : bool
-            Whether to skip the ODLC and airdrop states.
-        """
-        return self.__skip_odlc_and_airdrop
-
-    @skip_odlc_and_airdrop.setter
-    def skip_odlc_and_airdrop(self, flag: bool) -> None:
-        """
-        Sets whether to skip the ODLC and airdrop states.
-
-        Parameters
-        ----------
-        flag : bool
-            Whether to skip the ODLC and airdrop states.
-        """
-        self.__skip_odlc_and_airdrop = flag
+    def exported_at(self) -> str:
+        return self.__exported_at
 
     @property
-    def standard_object_count(self) -> int:
-        """
-        Get the number of standard objects to attempt to find.
-
-        Returns
-        -------
-        count : int
-            The number of standard objects to attempt to find.
-        """
-        return self.__standard_object_count
-
-    @standard_object_count.setter
-    def standard_object_count(self, count: int) -> None:
-        """
-        Set the number of standard objects to attempt to find.
-
-        Parameters
-        ----------
-        count : int
-            The number of standard objects to attempt to find.
-        """
-        self.__standard_object_count = count
-
-    # ----- Wind Speed Settings ----- #
-    @property
-    def mean_wind_speed(self) -> float:
-        """
-        The mean wind speed, in meters per second.
-        """
-        return self.__mean_wind_speed
+    def waypoints(self) -> list:
+        return self.__waypoints
 
     @property
-    def mean_wind_direction(self) -> float:
-        """
-        The mean wind direction, in degrees.
-        A value of 0 represents north, and 90 represents west.
-        """
-        return self.__mean_wind_direction
-
-    # ----- Flight Initialization Settings ----- #
-    @property
-    def run_title(self) -> str:
-        """
-        Return the title for the current flight execution
-
-        Returns
-        -------
-        run_title : str
-            Current title for the flight
-        """
-        return self.__run_title
-
-    @run_title.setter
-    def run_title(self, new_title: str) -> None:
-        """
-        Sets a new title for the current flight
-
-        Parameters
-        ----------
-        new_title : str
-            New title for the flight execution
-        """
-        self.__run_title = new_title
+    def loops(self) -> int:
+        return self.__loops
 
     @property
-    def run_description(self) -> str:
-        """
-        Returns the description for the current flight execution
+    def ground_station_lat(self) -> float:
+        return self.__ground_station_lat
 
-        Returns
-        -------
-        run_description : str
-            Detailed description for the current flight plan
-        """
-        return self.__run_description
+    @property
+    def ground_station_lon(self) -> float:
+        return self.__ground_station_lon
 
-    @run_description.setter
-    def run_description(self, new_description: str) -> None:
-        """
-        Sets a new description for the flight
+    @property
+    def ground_station_address(self) -> str:
+        return self.__ground_station_address
 
-        Parameters
-        ----------
-        new_description : str
-            New description for the current flight
-        """
-        self.__run_description = new_description
+    @property
+    def cruise_speed_ms(self) -> float:
+        return self.__cruise_speed_ms
+
+    @property
+    def min_altitude_m(self) -> float:
+        return self.__min_altitude_m
+
+    @property
+    def begin_landing_pct(self) -> float:
+        return self.__begin_landing_pct
+
+    @property
+    def emergency_land_pct(self) -> float:
+        return self.__emergency_land_pct
+
+    @property
+    def log_battery_events(self) -> bool:
+        return self.__log_battery_events
+
+    @property
+    def log_flight_hours(self) -> bool:
+        return self.__log_flight_hours
+
+    @property
+    def low_battery_alert(self) -> bool:
+        return self.__low_battery_alert
+
+    @property
+    def geofence_enabled(self) -> bool:
+        return self.__geofence_enabled
+
+    @property
+    def geofence_points(self) -> list:
+        return self.__geofence_points
 
     @property
     def sim_mode(self) -> SimMode:
-        """
-        Returns the simulation mode
-
-        Returns
-        -------
-        sim_mode : SimMode
-            The simulation mode
-        """
         return self.__sim_mode
-
-    @sim_mode.setter
-    def sim_mode(self, sim_mode: SimMode) -> None:
-        """
-        Sets the simulation mode
-
-        Parameters
-        ----------
-        sim_mode : SimMode
-            The simulation mode
-        """
-        self.__sim_mode = sim_mode
-
-    @property
-    def mission_data_path(self) -> str:
-        """
-        Return the path to the JSON file containing the boundary and waypoint data.
-
-        Returns
-        -------
-        mission_data_path : str
-            The path to the JSON file containing the boundary and waypoint data.
-        """
-        return self.__mission_data_path
-
-    @mission_data_path.setter
-    def mission_data_path(self, mission_data_path: str) -> None:
-        """
-        Set the path to the JSON file containing the boundary and waypoint data.
-
-        Parameters
-        ----------
-        mission_data_path : str
-            The path to the JSON file containing the boundary and waypoint data.
-        """
 
     @property
     def yolo_status(self) -> Event:
-        """
-        Return the asyncio Event that tracks for completion of image processing.
-
-        Returns
-        -------
-        yolo_status : Event
-            The Event with status tracking the YOLO model.
-        """
         return self.__yolo_status

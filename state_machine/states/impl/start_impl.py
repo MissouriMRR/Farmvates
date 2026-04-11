@@ -6,7 +6,7 @@ import logging
 from state_machine.state_tracker import (
     update_state,
     update_drone,
-    update_flight_settings,
+    
 )
 from state_machine.states.start import Start
 from state_machine.states.state import State
@@ -35,11 +35,15 @@ async def run(self: Start) -> State:
     try:
         update_state("Start")
         update_drone(self.drone)
-        update_flight_settings(self.flight_settings)
+        
         logging.info("Start state running")
 
         await self.drone.connect_drone()
-        await self.drone.arm()
+        while not self.drone._vehicle.armed:
+            await asyncio.sleep(0.5)
+            logging.info("Waiting for drone to be armed...")
+        await self.drone.setGroundStationLocation()
+        
 
         logging.info("Start state complete")
         return Takeoff(self.drone, self.flight_settings)
