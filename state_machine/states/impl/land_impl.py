@@ -2,15 +2,15 @@
 
 import asyncio
 import logging
-
+import dronekit
 from state_machine.state_tracker import (
     update_state,
     update_drone,
     
 )
 from state_machine.states.land import Land
-
-
+from state_machine.states.charge import Charge
+from flight.waypoint import goto
 async def run(self: Land) -> None:
     """
     Implements the run method for the Land state.
@@ -36,10 +36,13 @@ async def run(self: Land) -> None:
 
         # Instruct the drone to land
         self.drone.vehicle.airspeed = 20
-        await self.drone.return_to_launch()
-        print("RUN ALEN's CODE HERE")
+        self.drone.vehicle.mode = dronekit.VehicleMode("GUIDED")
+        await goto(self.drone, self.drone._home_location.lat, self.drone._home_location.lon, self.flight_settings.min_altitude_m)
+        self.drone.vehicle.mode = dronekit.VehicleMode("LAND")
+        for i in range(20):
+            print("RUN ALEN's CODE HERE")
         logging.info("Land state complete.")
-        return
+        return Charge(self.drone, self.flight_settings)
     except asyncio.CancelledError as ex:
         logging.error("Land state canceled")
         raise ex

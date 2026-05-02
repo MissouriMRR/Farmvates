@@ -6,5 +6,7 @@ from state_machine.states.impl import (
     Start,
     Takeoff,
     Waypoint,
+    EmergencyLand,
+    Charge
 )
 from state_machine.states.state import State

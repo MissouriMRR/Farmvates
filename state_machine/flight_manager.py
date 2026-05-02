@@ -81,6 +81,7 @@ class FlightManager:
                 "Keyboard interrupt detected. Killing state machine and landing drone."
             )
             state_machine_task.cancel()
+            self.drone._vehicle.mission.clear()  # Clear the mission to prevent the drone from taking off again after landing
             await self._graceful_exit()
 
     async def kill_switch(self, state_machine_process: asyncio.Task[None]) -> None:

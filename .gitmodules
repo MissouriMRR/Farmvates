@@ -1,0 +1,3 @@
+[submodule "flight/hawkspot"]
+	path = flight/hawkspot
+	url = https://github.com/MissouriMRR/hawkspot.git

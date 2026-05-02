@@ -21,7 +21,7 @@ from flight.waypoint.geometry import LineSegment, Point
 from flight.waypoint.goto import move_to
 from flight.waypoint.graph import GraphNode
 from flight.waypoint import pathfinding
-
+from flight.waypoint.geofence import upload_geofence
 
 from state_machine.states.state import State
 from state_machine.states.start import Start
@@ -81,12 +81,12 @@ async def run(self: Waypoint) -> State:
                 return Land(self.drone, self.flight_settings)
             if(self.drone._vehicle.mode.name != "AUTO"):
 
-                logging.info("Drone mode changed from AUTO, landing immediately")
                 return Start(self.drone, self.flight_settings)
             dots+="."
             if(len(dots)>3):
                 dots=""
 
+        upload_geofence(self.drone, self.flight_settings.geofence_points, inclusion=True)
         logging.info("Loops complete, landing")
         return Land(self.drone, self.flight_settings)
             

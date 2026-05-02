@@ -2,16 +2,16 @@
 
 import asyncio
 import logging
-import dronekit
+
 from state_machine.state_tracker import (
     update_state,
     update_drone,
     
 )
-from state_machine.states.emergencyLand import EmergencyLand
+from state_machine.states.charge import Charge
+from state_machine.states.start import Start
 
-
-async def run(self: EmergencyLand) -> None:
+async def run(self: Charge) -> None:
     """
     Implements the run method for the Land state.
 
@@ -29,21 +29,22 @@ async def run(self: EmergencyLand) -> None:
 
     """
     try:
-        update_state("Land")
+        update_state("Charge")
         update_drone(self.drone)
         
-        logging.info("Land state running")
+        logging.info("Charge state running")
+        while True:
+            if self.drone.get_battery_percentage() >= 95:
+                break
+            logging.logger.info(f"Battery at {self.drone.get_battery_percentage()}%, waiting to charge...")
+            await asyncio.sleep(30)
 
-        # Instruct the drone to land
-        self.drone.vehicle.airspeed = 20
-        self.drone.vehicle.mode = dronekit.VehicleMode("LAND")
-
-        logging.info("Land state complete.")
-        return
+        logging.info("Charge state complete.")
+        return Start(self.drone, self.flight_settings)
     except asyncio.CancelledError as ex:
-        logging.error("Land state canceled")
+        logging.error("Charge state canceled")
         raise ex
 
 
-# Setting the run_callable attribute of the EmergencyLand class to the run function
-EmergencyLand.run_callable = run
+# Setting the run_callable attribute of the Charge class to the run function
+Charge.run_callable = run
