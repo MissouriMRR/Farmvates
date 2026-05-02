@@ -330,7 +330,7 @@ class Drone:
                 self.address = "tcp:127.0.0.1:5762"
                 self.baud = None
             case SimMode.AIRSIM:
-                self.address = "tcp:127.0.0.1:5762"
+                self.address = "tcp:127.0.0.1:14551"
                 self.baud = None
             case _:
                 raise ValueError("invalid sim mode")

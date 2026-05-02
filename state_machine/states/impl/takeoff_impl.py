@@ -63,6 +63,7 @@ async def run(self: Takeoff) -> State:
                 )
                 print(f"Added waypoint: {waypoint.lat}, {waypoint.lon}, {waypoint.alt}")
         
+        
         cmds.add(
             dronekit.Command(0,0,0, dronekit.mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT, dronekit.mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
             0, 0, 0, 0, 0, 0,

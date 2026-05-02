@@ -1,7 +1,7 @@
 {
-    "state": "Waypoint",
+    "state": "Land",
     "drone": {
-        "address": "tcp:127.0.0.1:5762",
+        "address": "tcp:127.0.0.1:14551",
         "odlc_scan": true
     },
     "flight_settings": {

@@ -39,7 +39,7 @@ async def run(self: Start) -> State:
         logging.info("Start state running")
 
         await self.drone.connect_drone()
-        self.drone._vehicle.clear_mission()  # Clear any existing mission to prevent unintended takeoff
+        self.drone._vehicle.commands.clear()  # Clear any existing mission to prevent unintended takeoff
         while not self.drone._vehicle.armed:
             await asyncio.sleep(0.5)
             logging.info("Waiting for drone to be armed...")

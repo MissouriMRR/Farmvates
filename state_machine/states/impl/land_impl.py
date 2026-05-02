@@ -37,7 +37,7 @@ async def run(self: Land) -> None:
         # Instruct the drone to land
         self.drone.vehicle.airspeed = 20
         self.drone.vehicle.mode = dronekit.VehicleMode("GUIDED")
-        await goto(self.drone, self.drone._home_location.lat, self.drone._home_location.lon, self.flight_settings.min_altitude_m)
+        await goto(self.drone, self.flight_settings.home_location.lat, self.flight_settings.home_location.lon, self.flight_settings.min_altitude_m)
         self.drone.vehicle.mode = dronekit.VehicleMode("LAND")
         for i in range(20):
             print("RUN ALEN's CODE HERE")

@@ -1,6 +1,6 @@
 import asyncio
 import time
-import mavutil
+from pymavlink import mavutil
 from state_machine.drone import Drone
 async def upload_geofence(drone: Drone, geofence_points, inclusion=True, timeout=5):
     """
